@@ -5,7 +5,10 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use PhpParser\Node\Stmt\TryCatch;
+
 
 class UserController extends Controller
 {
@@ -16,9 +19,9 @@ class UserController extends Controller
     {
         $users = User::get();
         return response()->json([
-            'data' => $users,
             'status' => true,
             'massage' => 'fetch data success',
+            'data' => $users,
         ]);
     }
 
@@ -36,7 +39,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(),[
+            $validator = Validator::make($request->all(), [
                 'name' => 'required|string',
                 'email' => 'required|string|email|unique:users,email',
                 'password' => 'required|min:8',
@@ -45,7 +48,7 @@ class UserController extends Controller
                 return response()->json([
                     'massage' => 'validation fail',
                     'errors' => $validator->errors(),
-                ],422);
+                ], 422);
             }
             $user = User::create([
                 'name' => $request->name,
@@ -71,7 +74,19 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
-        //
+        try {
+            $user = User::find($id);
+            return response()->json([
+                'status' => true,
+                'massage' => 'edit berhasil',
+                'data' => $user,
+            ]);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -87,7 +102,26 @@ class UserController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        //payload
+        try {
+            $user = User::findOrFail($id);
+            $user->name = $request->name;
+            $user->email = $request->email;
+            if ($request->filled('password')) {
+                $user->password = Hash::make($request->password);
+            }
+            $user->save();
+            return response()->json([
+                'status' => true,
+                'message' => 'Update User berhasil',
+                'data' => $user,
+            ]);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -95,6 +129,17 @@ class UserController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        try {
+            user::findOrFail($id)->delete();
+            return response()->json([
+                'status' => true,
+                'message' => 'delete berhasil',
+            ]);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage(),
+            ], 500);
+        }
     }
 }
